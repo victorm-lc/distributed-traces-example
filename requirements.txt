@@ -1,0 +1,10 @@
+langchain
+langchain-openai
+langsmith[otel]
+langgraph
+openai
+fastapi
+uvicorn
+httpx
+langchain-community
+langgraph-supervisor

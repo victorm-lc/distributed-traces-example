@@ -28,15 +28,30 @@ LLM applications are increasingly distributed across multiple services, from sim
 
 ## 📋 Tracing Strategies Overview
 
-### 1. **Basic Cross-Service Tracing**
-**Pattern**: Client-server communication with header-based context propagation and middleware integration
-**When to use**: Microservices, API gateways, web frameworks (FastAPI, Express)
-**Key concepts**: `langsmith-trace` headers, `TracingMiddleware`, automatic context extraction
+### 1. **Basic Cross-Service Tracing** ⭐ *Now with LLM Integration*
+**Pattern**: Client-server communication with header-based context propagation and middleware integration, featuring real ChatOpenAI calls
+**When to use**: Microservices, API gateways, web frameworks (FastAPI, Express) with LLM processing
+**Key concepts**: `langsmith-trace` headers, `TracingMiddleware`, automatic context extraction, LLM call tracing
+**Demo features**:
+- **Client-side**: LLM preprocessing and response analysis
+- **Server-side**: LLM research and summarization  
+- **Full tracing**: Token usage, costs, latency across distributed LLM calls
 
-### 2. **Multi-Agent Workflows**
-**Pattern**: Complex agent orchestration and tool usage tracing in LangGraph applications
-**When to use**: Multi-agent systems, agentic workflows, complex state-based applications
-**Key concepts**: Agent communication, state transitions, hierarchical tracing
+### 2. **Multi-Agent Workflows** ⭐ *Now with LangGraph Integration*
+**Pattern**: Distributed tracing across LangGraph agents deployed as separate services or when agents invoke external services
+**When to use**: 
+- Agents deployed as microservices that call each other
+- LangGraph workflows that invoke external APIs or databases
+- Multi-tenant systems where different agents run in isolated environments
+- Cross-organization agent collaboration
+**Key concepts**: Service-to-service context propagation, external tool tracing, cross-deployment visibility
+**Demo features**:
+- **Service architecture**: FastAPI service hosting LangGraph agents
+- **External calls**: Agents making HTTP requests to other services
+- **Context propagation**: Maintaining trace continuity across service boundaries
+- **Tool tracing**: Custom tools that call external APIs with proper trace linking
+
+**Note**: For single-process LangGraph applications, LangSmith's built-in tracing is sufficient and provides complete visibility into agent workflows, state transitions, and tool usage without requiring distributed tracing patterns.
 
 ### 3. **OpenTelemetry Integration**
 **Pattern**: Standards-based tracing using OpenTelemetry protocol with LangSmith
@@ -48,60 +63,55 @@ LLM applications are increasingly distributed across multiple services, from sim
 **When to use**: Real-time applications, streaming LLM responses, batch processing, parallel execution
 **Key concepts**: Asyncio compatibility, context isolation, streaming trace updates
 
-### 5. **Production Patterns**
-**Pattern**: Performance optimization, sampling strategies, and monitoring for production systems
-**When to use**: High-throughput systems, cost-sensitive environments, production monitoring
-**Key concepts**: Sampling strategies, performance optimization, error handling, dashboards
-
-### 6. **Troubleshooting & Edge Cases**
-**Pattern**: Debugging context issues, trace nesting problems, and handling complex scenarios
-**When to use**: Debugging distributed issues, custom frameworks, legacy integrations
-**Key concepts**: Manual context propagation, error recovery, performance debugging
-
-## 🏗️ Repository Structure
-
-```
-├── README.md
-├── requirements.txt
-├── setup/
-│   ├── environment_setup.ipynb
-│   └── common_utilities.py
-├── notebooks/
-│   ├── 01_basic_cross_service_tracing.ipynb
-│   ├── 02_opentelemetry_integration.ipynb
-│   ├── 03_async_streaming_patterns.ipynb
-│   ├── 04_multi_agent_workflows.ipynb
-│   ├── 05_production_patterns.ipynb
-│   └── 06_troubleshooting_edge_cases.ipynb
-├── examples/
-│   ├── fastapi_middleware/
-│   ├── multi_service_app/
-│   ├── langgraph_agent/
-│   └── production_monitoring/
-└── docs/
-    ├── best_practices.md
-    └── common_patterns.md
-```
-
 ## 🚀 Getting Started
 
-1. **Environment Setup**: Start with `setup/environment_setup.ipynb` to configure your LangSmith environment and understand basic concepts.
+1. **Environment Setup**: Set up your environment variables:
+   ```bash
+   # LangSmith Configuration
+   export LANGSMITH_API_KEY=your_langsmith_api_key_here
+   export LANGSMITH_PROJECT=distributed-traces-demo
+   export LANGSMITH_TRACING=true
+   
+   # OpenAI Configuration  
+   export OPENAI_API_KEY=your_openai_api_key_here
+   ```
 
-2. **Choose Your Pattern**: Based on your architecture, select the most relevant notebook:
-   - **Simple distributed apps**: `01_basic_cross_service_tracing.ipynb`
-   - **Multi-agent workflows**: `02_multi_agent_workflows.ipynb`
-   - **OpenTelemetry integration**: `03_opentelemetry_integration.ipynb`
-   - **Async/streaming systems**: `04_async_streaming_patterns.ipynb`
-   - **Production systems**: `05_production_patterns.ipynb`
-   - **Debugging issues**: `06_troubleshooting_edge_cases.ipynb`
+2. **Install Dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-3. **Implementation**: Each notebook contains:
-   - **Problem description** and use case scenarios
-   - **Complete working code** with step-by-step explanations
-   - **Multiple examples** covering different variations
-   - **Best practices** and common gotchas
-   - **Performance considerations** and optimization tips
-   - **Links to production examples** and further reading
+3. **Test Your Setup** (Optional but recommended):
+   ```bash
+   cd cross_service_tracing
+   python test_setup.py
+   ```
+
+4. **Run the LLM-Powered Demo**:
+   ```bash
+   # Terminal 1: Start the server
+   python server_demo.py
+   
+   # Terminal 2: Run the client
+   python client_demo.py
+   ```
+
+4. **Choose Your Pattern**: Based on your architecture, select the most relevant folder:
+   - **Simple distributed apps**: `cross_service_tracing` ✅ (LLM-powered demo available)
+   - **Multi-agent workflows**: `multi_agent_tracing` ✅ (LangGraph multi-agent demo available)
+   - **OpenTelemetry integration**: `otel_tracing`
+   - **Async/streaming systems**: `async_streaming_tracing`
+
+5. **Run Multi-Agent Demo** (Optional):
+   ```bash
+   # Terminal 1: Start the multi-agent service
+   cd multi_agent_tracing
+   python agent_service.py
+   
+   # Terminal 2: Run the multi-agent client
+   python client_demo.py
+   ```
+
 
 ## 🔧 Prerequisites
 
@@ -110,6 +120,21 @@ LLM applications are increasingly distributed across multiple services, from sim
 - Basic understanding of distributed systems concepts
 
 ## 🧠 Key Concepts
+
+### LangGraph vs Distributed Tracing Decision Tree
+
+**Use LangSmith's Built-in Tracing When:**
+- Your LangGraph agents run in a single process/service
+- All tools and resources are accessible from the same runtime
+- You need to trace agent state transitions, tool calls, and decision flows
+- Your multi-agent system is contained within one deployment
+
+**Use Distributed Tracing When:**
+- Your agents are deployed as separate microservices
+- Agents need to call external APIs or databases
+- You have cross-service communication between agents
+- You need to trace requests across multiple deployment boundaries
+- You're integrating with existing distributed systems
 
 ### Context Propagation
 Distributed tracing relies on propagating context across service boundaries. LangSmith supports this through:
@@ -132,8 +157,8 @@ Understanding parent-child relationships in distributed traces:
 
 | Pattern | Best For | Avoid When |
 |---------|----------|------------|
-| Basic Cross-Service | Microservices, web APIs, simple distributed systems | Complex multi-agent workflows |
-| Multi-Agent Workflows | LangGraph applications, complex agent systems | Basic LLM API calls |
+| Basic Cross-Service | Microservices, web APIs, simple distributed systems | Single-process applications |
+| Multi-Agent Workflows | Agents deployed as separate services, cross-service agent communication | Single-process LangGraph applications (use built-in LangSmith tracing) |
 | OpenTelemetry | Polyglot systems, existing OTel infrastructure | LangSmith-only simple applications |
 | Async & Streaming | Real-time apps, streaming responses, concurrent processing | Simple synchronous workflows |
 | Production Patterns | High-scale production, performance-sensitive systems | Development/testing environments |
@@ -165,10 +190,3 @@ Found a pattern we're missing? Encountered a unique use case? Contributions are 
 - [LangGraph Tracing Examples](https://docs.smith.langchain.com/observability/how_to_guides/trace_with_langgraph)
 - [Production Best Practices](https://docs.smith.langchain.com/observability/concepts)
 
-## 🏷️ Tags
-
-`langsmith` `distributed-tracing` `observability` `llm-ops` `microservices` `opentelemetry` `langgraph` `production`
-
----
-
-*This repository is maintained by the LangChain team. For support questions, please refer to the [LangSmith documentation](https://docs.smith.langchain.com) or open an issue.*
