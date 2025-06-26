@@ -51,17 +51,6 @@ LLM applications are increasingly distributed across multiple services, from sim
 - **Context propagation**: Maintaining trace continuity across service boundaries
 - **Tool tracing**: Custom tools that call external APIs with proper trace linking
 
-**Note**: For single-process LangGraph applications, LangSmith's built-in tracing is sufficient and provides complete visibility into agent workflows, state transitions, and tool usage without requiring distributed tracing patterns.
-
-### 3. **OpenTelemetry Integration**
-**Pattern**: Standards-based tracing using OpenTelemetry protocol with LangSmith
-**When to use**: Polyglot environments, existing OTel infrastructure, vendor-neutral observability
-**Key concepts**: OTel exporters, semantic conventions, hybrid native/OTel approaches
-
-### 4. **Async & Streaming Patterns**
-**Pattern**: Context propagation in async workflows, streaming responses, and concurrent processing
-**When to use**: Real-time applications, streaming LLM responses, batch processing, parallel execution
-**Key concepts**: Asyncio compatibility, context isolation, streaming trace updates
 
 ## 🚀 Getting Started
 
