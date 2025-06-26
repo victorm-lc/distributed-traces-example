@@ -81,38 +81,6 @@ LLM applications are increasingly distributed across multiple services, from sim
    pip install -r requirements.txt
    ```
 
-3. **Test Your Setup** (Optional but recommended):
-   ```bash
-   cd cross_service_tracing
-   python test_setup.py
-   ```
-
-4. **Run the LLM-Powered Demo**:
-   ```bash
-   # Terminal 1: Start the server
-   python server_demo.py
-   
-   # Terminal 2: Run the client
-   python client_demo.py
-   ```
-
-4. **Choose Your Pattern**: Based on your architecture, select the most relevant folder:
-   - **Simple distributed apps**: `cross_service_tracing` ✅ (LLM-powered demo available)
-   - **Multi-agent workflows**: `multi_agent_tracing` ✅ (LangGraph multi-agent demo available)
-   - **OpenTelemetry integration**: `otel_tracing`
-   - **Async/streaming systems**: `async_streaming_tracing`
-
-5. **Run Multi-Agent Demo** (Optional):
-   ```bash
-   # Terminal 1: Start the multi-agent service
-   cd multi_agent_tracing
-   python agent_service.py
-   
-   # Terminal 2: Run the multi-agent client
-   python client_demo.py
-   ```
-
-
 ## 🔧 Prerequisites
 
 - Python 3.8+
