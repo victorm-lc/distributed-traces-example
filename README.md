@@ -1,30 +1,14 @@
 # LangSmith Distributed Traces Patterns
 
-A comprehensive collection of patterns and strategies for implementing distributed tracing with LangSmith across various architectures and use cases. This repository provides practical notebooks demonstrating different approaches to trace complex LLM applications spanning multiple services, processes, and environments.
-
-## 🤔 Why Distributed Tracing for LLM Applications?
-
-Traditional observability tools focus on HTTP requests and database queries. LLM applications introduce unique challenges:
-
-- **Non-deterministic behavior**: Same prompt → different responses
-- **Complex workflows**: RAG pipelines, multi-agent systems, tool usage
-- **Variable performance**: Simple chat (500ms) vs complex reasoning (30s) 
-- **LLM-specific data**: Prompts, completions, token usage, costs
-- **Streaming responses**: Partial outputs over time
-
-**Without distributed tracing**: Scattered logs across services, no visibility into LLM reasoning steps, hard to debug multi-agent workflows
-
-**With LangSmith distributed tracing**: Complete request flow, LLM-specific insights, agent decision tracking, performance optimization across services
+Practical examples demonstrating distributed tracing patterns with LangSmith for multi-service LLM applications.
 
 ## 🎯 Purpose 
 
-LLM applications are increasingly distributed across multiple services, from simple client-server setups to complex multi-agent workflows. Traditional observability tools fall short when dealing with the unique challenges of LLM applications - long-running conversations, streaming responses, tool calls, and dynamic agent behaviors. This repository provides battle-tested patterns for distributed tracing with LangSmith to help you:
+This repository shows how to implement distributed tracing with LangSmith across different LLM application architectures:
 
-- **Debug complex multi-service workflows** with full visibility across your stack
-- **Monitor production performance** of distributed LLM applications
-- **Optimize latency and costs** by understanding bottlenecks across services  
-- **Implement proper context propagation** in various architectural patterns
-- **Handle edge cases** like async operations, streaming, and concurrent processing
+- **Debug multi-service workflows** with complete trace visibility
+- **Monitor distributed agent systems** with proper context propagation
+- **Handle complex scenarios** like multi-project tracing and cross-platform deployments
 
 ## 📋 Tracing Strategies Overview
 
@@ -38,18 +22,44 @@ LLM applications are increasingly distributed across multiple services, from sim
 - **Full tracing**: Token usage, costs, latency across distributed LLM calls
 
 ### 2. **Multi-Agent Workflows** ⭐ *Now with LangGraph Integration*
-**Pattern**: Distributed tracing across LangGraph agents deployed as separate services or when agents invoke external services
+**Pattern**: Distributed tracing across complex multi-agent systems with multi-project trace visibility and cross-platform deployments
+
+#### 2a. **Multi-Project Distributed Tracing Pattern** (`multi_agent_tracing/dual_project_tracing/`)
+**The Challenge**: When a supervisor agent (Platform Team) orchestrates sub-agents (Product Teams), organizations need:
+- **Supervisor visibility**: Complete end-to-end traces including all sub-agent executions in the supervisor's project
+- **Sub-agent team visibility**: Each product team sees only their sub-agent's trace data in their own project  
+- **Dual tracing**: The same trace spans appear in multiple LangSmith projects simultaneously
+
+**Current Limitation**: Distributed tracing context propagation forces all trace data to go to one project (the parent's), preventing sub-agents from simultaneously tracing to their own projects.
+
 **When to use**: 
-- Agents deployed as microservices that call each other
-- LangGraph workflows that invoke external APIs or databases
-- Multi-tenant systems where different agents run in isolated environments
-- Cross-organization agent collaboration
-**Key concepts**: Service-to-service context propagation, external tool tracing, cross-deployment visibility
+- Platform teams running supervisor agents that route to product team sub-agents
+- Organizations where different teams own different parts of an agent workflow
+- Scenarios requiring both end-to-end visibility and team-specific trace isolation
+- Production systems with distributed ownership of agent components
+
+**Key concepts**: Multi-project trace propagation, dual tracing contexts, project-specific trace visibility
 **Demo features**:
-- **Service architecture**: FastAPI service hosting LangGraph agents
-- **External calls**: Agents making HTTP requests to other services
-- **Context propagation**: Maintaining trace continuity across service boundaries
-- **Tool tracing**: Custom tools that call external APIs with proper trace linking
+- **Supervisor project**: Complete workflow traces including all sub-agent activities
+- **Sub-agent projects**: Product teams see only their agent's portion of distributed traces
+- **Context propagation**: Maintaining trace relationships while splitting across projects
+- **Team isolation**: Each team gets relevant trace data in their own LangSmith project
+
+#### 2b. **Cross-Platform Agent Orchestration Pattern** (`multi_agent_tracing/cross_platform/`)
+**The Challenge**: When Agent A (deployed on LangGraph Platform) calls Agent B (deployed elsewhere), Agent B's activities don't automatically appear in LangSmith traces.
+
+**When to use**:
+- LangGraph Platform agents that invoke external agent services
+- Hybrid deployments with agents across different platforms
+- Integration with existing agent services not on LangGraph Platform
+- Maintaining trace continuity across deployment boundaries
+
+**Key concepts**: Cross-platform context propagation, external agent tracing, trace nesting across deployments
+**Demo features**:
+- **Agent A**: LangGraph Platform-deployed supervisor agent
+- **Agent B**: Externally deployed sub-agent (FastAPI service)
+- **Context propagation**: Proper trace linking when Agent A calls Agent B
+- **Nested visibility**: Agent B's activities appear nested under the main workflow in LangSmith
 
 
 ## 🚀 Getting Started
@@ -78,58 +88,12 @@ LLM applications are increasingly distributed across multiple services, from sim
 
 ## 🧠 Key Concepts
 
-### LangGraph vs Distributed Tracing Decision Tree
+**Context Propagation**: Distributed tracing relies on propagating trace context across service boundaries via HTTP headers (`langsmith-trace`, `baggage`)
 
-**Use LangSmith's Built-in Tracing When:**
-- Your LangGraph agents run in a single process/service
-- All tools and resources are accessible from the same runtime
-- You need to trace agent state transitions, tool calls, and decision flows
-- Your multi-agent system is contained within one deployment
-
-**Use Distributed Tracing When:**
-- Your agents are deployed as separate microservices
-- Agents need to call external APIs or databases
-- You have cross-service communication between agents
-- You need to trace requests across multiple deployment boundaries
-- You're integrating with existing distributed systems
-
-### Context Propagation
-Distributed tracing relies on propagating context across service boundaries. LangSmith supports this through:
-- **HTTP headers** (`langsmith-trace`, `baggage`)
-- **Environment context** (`tracing_context`, `withRunTree`)
-- **Manual propagation** for complex scenarios
-
-### Trace Hierarchy
-Understanding parent-child relationships in distributed traces:
+**Trace Hierarchy**: 
 - **Trace**: Top-level request spanning multiple services
 - **Spans/Runs**: Individual operations within a trace
 - **Context**: Information linking spans across service boundaries
-
-### Performance Considerations
-- **Native format**: Optimal for LangSmith-only environments
-- **OpenTelemetry**: Better for polyglot/interop scenarios
-- **Sampling**: Critical for high-throughput production systems
-
-## 📊 When to Use Each Pattern
-
-| Pattern | Best For | Avoid When |
-|---------|----------|------------|
-| Basic Cross-Service | Microservices, web APIs, simple distributed systems | Single-process applications |
-| Multi-Agent Workflows | Agents deployed as separate services, cross-service agent communication | Single-process LangGraph applications (use built-in LangSmith tracing) |
-| OpenTelemetry | Polyglot systems, existing OTel infrastructure | LangSmith-only simple applications |
-| Async & Streaming | Real-time apps, streaming responses, concurrent processing | Simple synchronous workflows |
-| Production Patterns | High-scale production, performance-sensitive systems | Development/testing environments |
-| Troubleshooting | Debugging complex issues, custom implementations | Standard use cases with working patterns |
-
-## 🎯 Success Metrics
-
-Track these metrics to measure the effectiveness of your distributed tracing:
-
-- **Trace Completeness**: % of requests with full trace coverage
-- **Context Propagation Success**: % of spans properly linked
-- **Performance Impact**: Added latency from tracing overhead
-- **Debug Time Reduction**: Time saved in debugging distributed issues
-- **Production Visibility**: Coverage of production error scenarios
 
 ## 🤝 Contributing
 
@@ -142,8 +106,6 @@ Found a pattern we're missing? Encountered a unique use case? Contributions are 
 
 ## 📚 Additional Resources
 
-- [LangSmith Distributed Tracing Docs](https://docs.smith.langchain.com/observability/how_to_guides/distributed_tracing)
-- [OpenTelemetry Integration Guide](https://docs.smith.langchain.com/observability/how_to_guides/trace_with_opentelemetry)
-- [LangGraph Tracing Examples](https://docs.smith.langchain.com/observability/how_to_guides/trace_with_langgraph)
-- [Production Best Practices](https://docs.smith.langchain.com/observability/concepts)
+- [LangSmith Documentation](https://docs.smith.langchain.com/)
+- [LangGraph Documentation](https://langchain-ai.github.io/langgraph/)
 
