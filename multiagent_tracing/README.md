@@ -186,7 +186,7 @@ This will create test traces in `test-main-project` and `test-sub-project` to co
    - Confirm the `replicas` list includes the supervisor project
 
 3. **Connection errors**:
-   - Ensure all services are running (supervisor on 8123, research on 2025, writing on 2024)
+   - Ensure all services are running (supervisor on 8123, research on 2025, writing on 2026)
    - Check that `langgraph dev` started successfully
 
 ## 🚧 Known Limitations

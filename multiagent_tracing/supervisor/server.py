@@ -76,7 +76,7 @@ async def health_check():
         "agent": "supervisor",
         "sub_agents": {
             "research_agent": "http://127.0.0.1:2025",
-            "writer_agent": "http://127.0.0.1:2024"
+            "writer_agent": "http://127.0.0.1:2026"
         }
     }
 

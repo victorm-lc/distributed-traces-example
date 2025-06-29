@@ -59,7 +59,7 @@ def test_distributed_tracing():
     try:
         # Start all servers
         processes.append(start_server("multiagent_tracing/research_sub_agent/start_server.py", "Research Agent (port 2025)"))
-        processes.append(start_server("multiagent_tracing/writing_sub_agent/start_server.py", "Writing Agent (port 2024)"))
+        processes.append(start_server("multiagent_tracing/writing_sub_agent/start_server.py", "Writing Agent (port 2026)"))
         processes.append(start_langgraph_supervisor("Supervisor Agent (port 8123)"))
         
         print("\nAll servers started! Waiting a moment for initialization...")
@@ -86,7 +86,7 @@ def test_distributed_tracing():
                         }
                     ]
                 },
-                "stream_mode": ["values"]
+                "stream_mode": ["values", "updates"]
             },
             headers={"Content-Type": "application/json"},
             stream=True
@@ -95,7 +95,7 @@ def test_distributed_tracing():
         if response.status_code == 200:
             print("\nSUCCESS! Receiving streamed response from supervisor:")
             print("-" * 40)
-            
+            print(response)
             # Process the streaming response
             final_messages = []
             for line in response.iter_lines():
