@@ -1,6 +1,8 @@
 # Cross-Platform Dual Tracing Pattern
 
-This example demonstrates how to implement distributed tracing across multi-agent systems where:
+**⚠️ IMPORTANT LIMITATION**: As of LangSmith SDK 0.4.4, the replica functionality for distributed tracing has limitations. When using distributed tracing with `parent=headers`, traces will only appear in the parent's project, not in both the parent's and child's projects as intended. This is a known SDK limitation being addressed by the LangSmith team.
+
+This example demonstrates the intended pattern for distributed tracing across multi-agent systems where:
 - Sub-agents are deployed on different platforms (FastAPI, AWS Lambda, etc.)
 - Each team needs visibility into their own traces
 - The platform team needs visibility into the complete workflow
@@ -185,4 +187,11 @@ This will create test traces in `test-main-project` and `test-sub-project` to co
 
 3. **Connection errors**:
    - Ensure all services are running (supervisor on 8123, research on 2025, writing on 2024)
-   - Check that `langgraph dev` started successfully 
+   - Check that `langgraph dev` started successfully
+
+## 🚧 Known Limitations
+
+1. **Replica functionality in distributed tracing**: 
+   - When using `tracing_context(parent=headers)`, the SDK currently only sends traces to the parent's project
+   - The `replicas` parameter doesn't work as expected in distributed tracing scenarios
+   - This is a known SDK limitation as of version 0.4.4

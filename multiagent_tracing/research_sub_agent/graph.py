@@ -23,11 +23,6 @@ from multiagent_tracing.research_sub_agent.prompts import SYSTEM_PROMPT
 from langsmith import traceable
 
 
-"""@traceable(
-    name="call-research-agent",
-    run_type="chain",
-    project_name="research-distributed-traces",
-)"""
 async def call_model(state: State) -> Dict[str, List[AIMessage]]:
     """Call the LLM powering our "agent".
 
@@ -71,11 +66,6 @@ async def call_model(state: State) -> Dict[str, List[AIMessage]]:
     return {"messages": [response]}
 
 
-"""@traceable(
-    name="research-agent-tools",
-    run_type="tool",
-    project_name="research-distributed-traces",
-)"""
 async def call_tools(state: State) -> Dict[str, List]:
     """Execute tools with custom tracing."""
     tool_node = ToolNode(TOOLS)

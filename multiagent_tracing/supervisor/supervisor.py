@@ -16,6 +16,10 @@ from langgraph.graph import MessagesState, StateGraph, START
 import requests
 from langsmith.run_helpers import get_current_run_tree
 
+# Configuration for sub-agent URLs
+RESEARCH_AGENT_URL = os.getenv("RESEARCH_AGENT_URL", "http://127.0.0.1:2025")
+WRITING_AGENT_URL = os.getenv("WRITING_AGENT_URL", "http://127.0.0.1:2024")
+
 class SupervisorInputState(MessagesState):
     """Public input state that will be visible in LangGraph Studio."""
     # Only contains the messages field from MessagesState
@@ -42,7 +46,7 @@ def call_research_agent(state: MessagesState):
         print("Supervisor: No run tree available")
     
     response = requests.post(
-        "http://127.0.0.1:2025/invoke",
+        f"{RESEARCH_AGENT_URL}/invoke",
         json={
             "assistant_id": "research_agent",
             "input": {
@@ -76,7 +80,7 @@ def call_writer_agent(state: MessagesState):
         print("Supervisor: No run tree available")
     
     response = requests.post(
-        "http://127.0.0.1:2024/invoke",
+        f"{WRITING_AGENT_URL}/invoke",
         json={
             "assistant_id": "writer_agent",
             "input": {
