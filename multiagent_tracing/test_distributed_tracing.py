@@ -63,78 +63,84 @@ def test_distributed_tracing():
         processes.append(start_langgraph_supervisor("Supervisor Agent (port 8123)"))
         
         print("\nAll servers started! Waiting a moment for initialization...")
-        time.sleep(5)
+        time.sleep(3)
         
         # Test the distributed tracing
         print("\n" + "="*80)
         print("TESTING DISTRIBUTED TRACING")
         print("="*80)
         
-        # Make a request to the supervisor using LangGraph API format
-        print("\nMaking request to supervisor agent via LangGraph API...")
+        # Step 1: Create a thread
+        print("\nStep 1: Creating thread...")
+        thread_response = requests.post(
+            "http://127.0.0.1:8123/threads",
+            json={},
+            headers={"Content-Type": "application/json"}
+        )
         
-        # Use LangGraph's streaming API
+        if thread_response.status_code != 200:
+            print(f"ERROR: Failed to create thread - {thread_response.status_code}")
+            print(thread_response.text[:500])
+            return
+            
+        thread_data = thread_response.json()
+        thread_id = thread_data["thread_id"]
+        print(f"✅ Created thread: {thread_id}")
+        
+        # Step 2: Execute the supervisor workflow
+        print("\nStep 2: Executing supervisor workflow...")
+        
         response = requests.post(
-            "http://127.0.0.1:8123/runs/stream",
+            f"http://127.0.0.1:8123/threads/{thread_id}/runs/wait",
             json={
-                "assistant_id": "supervisor_agent",  # Graph name from langgraph.json
+                "assistant_id": "supervisor_agent",
                 "input": {
                     "messages": [
                         {
                             "type": "human",
-                            "content": "Research the latest developments in quantum computing and write a brief report about it."
+                            "content": "what's some good news for today?"
                         }
                     ]
-                },
-                "stream_mode": ["values", "updates"]
+                }
             },
-            headers={"Content-Type": "application/json"},
-            stream=True
+            headers={"Content-Type": "application/json"}
         )
         
         if response.status_code == 200:
-            print("\nSUCCESS! Receiving streamed response from supervisor:")
-            print("-" * 40)
-            print(response)
-            # Process the streaming response
-            final_messages = []
-            for line in response.iter_lines():
-                if line:
-                    line_str = line.decode('utf-8')
-                    if line_str.startswith("data: "):
-                        data_str = line_str[6:]  # Remove "data: " prefix
-                        try:
-                            data = json.loads(data_str)
-                            if isinstance(data, list) and len(data) > 0:
-                                event = data[0]
-                                if event.get("event") == "values":
-                                    messages = event.get("data", {}).get("messages", [])
-                                    if messages:
-                                        final_messages = messages
-                        except json.JSONDecodeError:
-                            continue
+            print("✅ SUCCESS! Supervisor workflow completed!")
+            print("-" * 50)
             
-            # Display the final messages
-            for msg in final_messages[-3:]:  # Show last 3 messages
+            result = response.json()
+            messages = result.get("messages", [])
+            
+            # Display the complete conversation
+            print(f"\n💬 Complete conversation ({len(messages)} messages):")
+            print("="*60)
+            
+            for i, msg in enumerate(messages, 1):
                 msg_type = msg.get("type", "unknown")
                 content = msg.get("content", "")
-                print(f"Type: {msg_type}")
-                print(f"Content: {content[:200]}...")
+                
+                print(f"\n{i}. [{msg_type.upper()}]:")
+                if len(content) > 300:
+                    print(content[:300] + "...\n[truncated]")
+                else:
+                    print(content)
                 print("-" * 40)
             
             print("\n" + "="*80)
-            print("DISTRIBUTED TRACING RESULTS")
+            print("🔍 DISTRIBUTED TRACING RESULTS")  
             print("="*80)
-            print("\nCheck your LangSmith dashboard for traces in these projects:")
-            print("1. 'supervisor-distributed-traces' - Should show COMPLETE trace including sub-agent calls")
-            print("2. 'research-distributed-traces' - Should show ONLY research agent activity")
-            print("3. 'writing-distributed-traces' - Should show ONLY writing agent activity")
-            print("\nThe supervisor project should show the full workflow with nested traces from sub-agents.")
-            print("Each sub-agent project should only show their specific traces.")
+            print("\n✅ Check your LangSmith dashboard - traces should show as COMPLETED!")
+            print("\nProjects to check:")
+            print("1. 'supervisor-distributed-traces' - Complete workflow with sub-agent calls")
+            print("2. 'research-distributed-traces' - Research agent activity only") 
+            print("3. 'writing-distributed-traces' - Writing agent activity only")
+            print("\n🎯 The supervisor project shows the full distributed trace!")
             
         else:
-            print(f"\nERROR: Request failed with status {response.status_code}")
-            print(response.text)
+            print(f"\n❌ ERROR: Request failed with status {response.status_code}")
+            print(response.text[:500])
             
     except Exception as e:
         print(f"\nERROR: {str(e)}")
