@@ -14,6 +14,7 @@ from langchain_core.tools import tool
 
 from langgraph.graph import MessagesState, StateGraph, START
 import requests
+from langsmith.run_helpers import get_current_run_tree
 
 class SupervisorInputState(MessagesState):
     """Public input state that will be visible in LangGraph Studio."""
@@ -32,6 +33,14 @@ class SupervisorState(MessagesState):
 
 # call the seperately research agent as a sub-agent via API
 def call_research_agent(state: MessagesState):
+    # Get trace headers to propagate context to sub-agent
+    headers = {}
+    if run_tree := get_current_run_tree():
+        headers.update(run_tree.to_headers())
+        print(f"Supervisor sending headers to research agent: {headers}")
+    else:
+        print("Supervisor: No run tree available")
+    
     response = requests.post(
         "http://127.0.0.1:2025/invoke",
         json={
@@ -39,7 +48,8 @@ def call_research_agent(state: MessagesState):
             "input": {
                 "messages": [{"role": "user", "content": state["messages"][-1].content}]
             }
-        }
+        },
+        headers=headers  # Pass trace headers
     )
 
     result = response.json()
@@ -57,6 +67,14 @@ def call_research_agent(state: MessagesState):
 
 # call the seperately writer agent as a sub-agent via API
 def call_writer_agent(state: MessagesState):
+    # Get trace headers to propagate context to sub-agent
+    headers = {}
+    if run_tree := get_current_run_tree():
+        headers.update(run_tree.to_headers())
+        print(f"Supervisor sending headers to writer agent: {headers}")
+    else:
+        print("Supervisor: No run tree available")
+    
     response = requests.post(
         "http://127.0.0.1:2024/invoke",
         json={
@@ -64,7 +82,8 @@ def call_writer_agent(state: MessagesState):
             "input": {
                 "messages": [{"role": "user", "content": state["messages"][-1].content}]
             }
-        }
+        },
+        headers=headers  # Pass trace headers
     )
     
     result = response.json()

@@ -1,5 +1,5 @@
 import os
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel
 from typing import List, Dict, Any
 import uvicorn
@@ -8,6 +8,7 @@ import uvicorn
 os.environ["LANGSMITH_TRACING"] = "true"
 
 from multiagent_tracing.writing_sub_agent.graph import graph
+from langsmith.run_helpers import tracing_context
 
 app = FastAPI(title="Writing Sub-Agent API")
 
@@ -23,16 +24,36 @@ class InvokeResponse(BaseModel):
     messages: List[Dict[str, str]]
 
 @app.post("/invoke", response_model=InvokeResponse)
-async def invoke_agent(request: InvokeRequest):
-    """Invoke the writing agent graph."""
+async def invoke_agent(request: Request, invoke_request: InvokeRequest):
+    """Invoke the writing agent graph with distributed tracing support."""
     try:
+        # Extract distributed tracing headers from the request
+        parent_headers = {}
+        if langsmith_trace := request.headers.get("langsmith-trace"):
+            parent_headers["langsmith-trace"] = langsmith_trace
+        if baggage := request.headers.get("baggage"):
+            parent_headers["baggage"] = baggage
+        
+        # Debug: Log received headers
+        print(f"Writing Agent - Received headers: {parent_headers}")
+        
         # Convert the input messages to the expected format
         messages = []
-        for msg in request.input["messages"]:
+        for msg in invoke_request.input["messages"]:
             messages.append({"role": msg.role, "content": msg.content})
         
-        # Invoke the graph
-        result = await graph.ainvoke({"messages": messages})
+        # Use distributed tracing with replicas to trace to both projects
+        # Set project_name to ensure this agent always traces to its own project
+        # Add replicas to also send traces to the supervisor's project
+        with tracing_context(
+            parent=parent_headers if parent_headers else None,
+            project_name="writing-distributed-traces",  # Always set the project
+            replicas=[
+                ("supervisor-distributed-traces", None)  # Also trace to supervisor's project
+            ] if parent_headers else []
+        ):
+            # Invoke the graph
+            result = await graph.ainvoke({"messages": messages})
         
         # Format the response
         response_messages = []
@@ -51,6 +72,8 @@ async def invoke_agent(request: InvokeRequest):
         return InvokeResponse(messages=response_messages)
     
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/health")

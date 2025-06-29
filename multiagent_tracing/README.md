@@ -1,138 +1,188 @@
-# Multi-Agent Distributed Tracing Example
+# Cross-Platform Dual Tracing Pattern
 
-This example demonstrates **distributed tracing across multi-agent systems** using LangSmith, where a supervisor agent orchestrates sub-agents running as separate services on different ports.
+This example demonstrates how to implement distributed tracing across multi-agent systems where:
+- Sub-agents are deployed on different platforms (FastAPI, AWS Lambda, etc.)
+- Each team needs visibility into their own traces
+- The platform team needs visibility into the complete workflow
 
-## 🎯 What This Demonstrates
+## 🎯 The Challenge
 
-**Cross-Service Multi-Agent Tracing**: Shows how to maintain trace continuity when a supervisor agent makes HTTP calls to sub-agents deployed as separate services, enabling full observability across distributed agent workflows.
+When a supervisor agent (deployed on LangGraph Platform) orchestrates sub-agents (deployed elsewhere), organizations face a dual challenge:
 
-**Key Features**:
-- **Supervisor Agent**: Orchestrates workflow and routes requests to specialized sub-agents
-- **Research Agent**: Performs web searches using Tavily to gather information  
-- **Writer Agent**: Generates reports and documentation
-- **Distributed Tracing**: Complete trace visibility across all HTTP service calls
-- **Context Propagation**: Proper trace linking when supervisor calls external sub-agents
+1. **Cross-platform tracing**: Sub-agents deployed on external services don't automatically appear in LangSmith traces
+2. **Multi-project visibility**: Teams need both:
+   - **Supervisor visibility**: Complete traces showing the entire workflow
+   - **Sub-agent team visibility**: Only their portions in separate projects for focused debugging
+
+## 🔧 The Solution
+
+Using LangSmith SDK 0.4.4+, we can achieve this with distributed tracing and replicas:
+
+### 1. Supervisor Propagates Trace Context
+
+```python
+# In supervisor agent
+from langsmith.run_helpers import get_current_run_tree
+
+def call_sub_agent(state):
+    headers = {}
+    if run_tree := get_current_run_tree():
+        headers.update(run_tree.to_headers())
+    
+    response = requests.post(
+        "http://sub-agent-url/invoke",
+        json={"input": state},
+        headers=headers  # Propagate trace context
+    )
+```
+
+### 2. Sub-Agents Use Distributed Tracing with Replicas
+
+```python
+# In sub-agent server
+from langsmith.run_helpers import tracing_context
+
+@app.post("/invoke")
+async def invoke(request: Request):
+    # Extract trace headers
+    parent_headers = {}
+    if langsmith_trace := request.headers.get("langsmith-trace"):
+        parent_headers["langsmith-trace"] = langsmith_trace
+    if baggage := request.headers.get("baggage"):
+        parent_headers["baggage"] = baggage
+    
+    # Trace to BOTH projects
+    with tracing_context(
+        parent=parent_headers,
+        project_name="sub-agent-project",     # Sub-agent's own project
+        replicas=[
+            ("supervisor-project", None)      # Also trace to supervisor's project
+        ]
+    ):
+        # Execute sub-agent logic
+        result = await process_request(...)
+```
+
+## 📊 Result
+
+- **Supervisor Project**: Shows complete trace with all sub-agent activity nested under the main trace
+- **Sub-Agent Projects**: Show only their specific traces, allowing teams to focus on their components
+
+## 🚀 Running the Example
+
+### Prerequisites
+
+1. **Set up environment**:
+   ```bash
+   export LANGSMITH_API_KEY=your_api_key
+   export LANGSMITH_TRACING=true
+   ```
+
+2. **Install dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+### Running the Demo
+
+#### Option 1: Using the Run Scripts (Recommended)
+
+```bash
+# On macOS/Linux
+./multiagent_tracing/run_demo.sh
+
+# On Windows or any platform
+python multiagent_tracing/run_demo.py
+```
+
+#### Option 2: Manual Setup
+
+1. **Start the sub-agents** (in separate terminals):
+   ```bash
+   # Terminal 1: Research Agent
+   python multiagent_tracing/research_sub_agent/start_server.py
+   
+   # Terminal 2: Writing Agent
+   python multiagent_tracing/writing_sub_agent/start_server.py
+   ```
+
+2. **Start the supervisor with LangGraph dev**:
+   ```bash
+   # Terminal 3: Supervisor (using LangGraph dev server)
+   cd multiagent_tracing/supervisor
+   langgraph dev --port 8123
+   ```
+
+3. **Run the test**:
+   ```bash
+   # Terminal 4: Make a test request
+   python multiagent_tracing/test_distributed_tracing.py
+   ```
+
+### Check Results
+
+After running the demo, check your LangSmith dashboard:
+- Navigate to the `supervisor-distributed-traces` project to see complete traces
+- Navigate to `research-distributed-traces` or `writing-distributed-traces` to see sub-agent specific traces
 
 ## 🏗️ Architecture
 
-This system consists of three distributed services that communicate via HTTP:
-
 ```
-┌─────────────────┐    HTTP POST     ┌──────────────────┐
-│  Supervisor     │ ───────────────► │  Research Agent  │
-│  Agent          │                  │  (Port 2025)     │
-│  (Port 2026)    │                  └──────────────────┘
-└─────────────────┘                           │
-         │                                    │
-         │            HTTP POST               │
-         └────────────────────────────────────┼─────────────────┐
-                                              │                 │
-                                   ┌──────────────────┐        │
-                                   │  Writer Agent    │        │
-                                   │  (Port 2024)     │        │
-                                   └──────────────────┘        │
-                                                               │
-                                                               ▼
-                                                    LangSmith Traces
-                                                (Complete observability)
+┌─────────────────────────┐
+│   Supervisor Agent      │ (LangGraph Platform)
+│ Project: supervisor-... │
+└───────┬─────────────────┘
+        │ Propagates headers
+        ├─────────────────┬─────────────────┐
+        ▼                 ▼                 ▼
+┌───────────────┐ ┌───────────────┐ ┌───────────────┐
+│ Research Agent│ │ Writing Agent │ │  Other Agent  │
+│ (FastAPI)     │ │ (FastAPI)     │ │ (AWS Lambda)  │
+└───────────────┘ └───────────────┘ └───────────────┘
+        │                 │                 │
+        │ Traces to both projects via replicas
+        ▼                 ▼                 ▼
+┌───────────────┐ ┌───────────────┐ ┌───────────────┐
+│Research Project│ │Writing Project│ │ Other Project │
+└───────────────┘ └───────────────┘ └───────────────┘
 ```
 
-**Components:**
-- **Supervisor Agent (Port 2026)**: Orchestrates the workflow and routes requests to specialized sub-agents
-- **Research Agent (Port 2025)**: Performs web searches using Tavily to gather information  
-- **Writer Agent (Port 2024)**: Generates reports and documentation from research data
-- **LangSmith**: Provides tracing across all HTTP service calls and subagents back up to supervisor agent
+## 🔑 Key Benefits
 
-## 🛠️ Prerequisites
+1. **Team Autonomy**: Each team monitors their own agents in their own projects
+2. **Platform Visibility**: Platform team sees complete workflow for debugging
+3. **Cost Attribution**: Trace costs can be attributed to appropriate teams
+4. **Security**: Teams only see traces relevant to their components
 
-1. **Environment Variables**:
-   ```bash
-   # LangSmith Configuration
-   export LANGSMITH_API_KEY=your_langsmith_api_key_here
-   export LANGSMITH_PROJECT=multiagent-tracing-demo
-   export LANGSMITH_TRACING=true
-   
-   # OpenAI Configuration  
-   export OPENAI_API_KEY=your_openai_api_key_here
-   
-   # Tavily Configuration (for research agent)
-   export TAVILY_API_KEY=your_tavily_api_key_here
-   ```
+## 📝 Notes
 
-2. **Install Project**: Install the project as an editable package from the project root:
-   ```bash
-   # Install the project and all dependencies
-   pip install -e .
-   
-   # Or if you prefer using requirements.txt:
-   pip install -r requirements.txt
-   pip install -e .
-   ```
+- The supervisor uses `langgraph dev` to simulate LangGraph Platform deployment
+- Sub-agents use FastAPI to simulate external deployments
+- The `simple_demo.py` provides a self-contained example without requiring langgraph dev
 
+## 🔍 Troubleshooting
 
-## 🔧 Running the System
+### Verifying Replica Functionality
 
-You'll need **3 separate terminals** to run this distributed system:
-
-### Terminal 1: Research Agent (Port 2025)
+If you want to verify that the replica functionality is working:
 
 ```bash
-cd multiagent_tracing/research_sub_agent
-python start_server.py
+python multiagent_tracing/verify_replicas.py
 ```
 
-Wait for the message: `Server is ready and listening on port 2025`
+This will create test traces in `test-main-project` and `test-sub-project` to confirm replicas are functioning.
 
-### Terminal 2: Writer Agent (Port 2024)
+### Common Issues
 
-```bash
-cd multiagent_tracing/writing_sub_agent
-python start_server.py
-```
+1. **No traces in sub-agent projects**: 
+   - Ensure you're using `langsmith>=0.4.4`
+   - Check that `LANGSMITH_TRACING=true` is set
+   - Verify the sub-agents are receiving trace headers from supervisor
 
-Wait for the message: `Server is ready and listening on port 2024`
+2. **Traces only appear in supervisor project**:
+   - Make sure sub-agents set their own `project_name` in `tracing_context`
+   - Confirm the `replicas` list includes the supervisor project
 
-### Terminal 3: Supervisor Agent (Port 2026)
-
-```bash
-cd multiagent_tracing/supervisor
-langgraph dev --port 2026
-```
-
-Wait for the message: `Server is ready and listening on port 2026`
-
-## 🧪 Testing the System
-
-LangGraph Studio
-
-1. Open LangGraph Studio
-2. Send a message like: `"Research the latest developments in AI agents and write a summary report"`
-
-
-## 📊 Expected Workflow
-
-1. **User Query**: "Research X and write a summary report"
-2. **Supervisor**: Analyzes request and decides to route to research agent first
-3. **Research Agent**: Uses Tavily to search for information about X
-4. **Supervisor**: Receives research results and routes to writer agent
-5. **Writer Agent**: Creates a formatted report from the research
-6. **Supervisor**: Returns final report to user
-
-## 🔍 Observing Distributed Traces
-
-In LangSmith, you'll see:
-
-1. **Complete Trace Hierarchy**: 
-   - Root trace from supervisor
-   - Child spans from HTTP calls to sub-agents
-   - Nested spans within each agent (LLM calls, tool usage)
-
-2. **Cross-Service Context**: 
-   - Trace ID propagated across all HTTP calls
-   - Complete workflow visibility despite distributed deployment
-
-3. **Performance Metrics**:
-   - End-to-end latency
-   - Individual agent processing times
-   - LLM token usage across all services
-
+3. **Connection errors**:
+   - Ensure all services are running (supervisor on 8123, research on 2025, writing on 2024)
+   - Check that `langgraph dev` started successfully 
