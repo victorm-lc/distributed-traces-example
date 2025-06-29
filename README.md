@@ -21,45 +21,28 @@ This repository shows how to implement distributed tracing with LangSmith across
 - **Server-side**: LLM research and summarization  
 - **Full tracing**: Token usage, costs, latency across distributed LLM calls
 
-### 2. **Multi-Agent Workflows** ⭐ *Now with LangGraph Integration*
-**Pattern**: Distributed tracing across complex multi-agent systems with multi-project trace visibility and cross-platform deployments
+### 2. **Multi-Agent Cross-Platform Tracing** ⭐ *Now with LangGraph Integration*
+**Pattern**: Distributed tracing across multi-agent systems where sub-agents are deployed on different platforms, requiring both cross-platform context propagation AND multi-project trace visibility.
 
-#### 2a. **Multi-Project Distributed Tracing Pattern** (`multi_agent_tracing/dual_project_tracing/`)
-**The Challenge**: When a supervisor agent (Platform Team) orchestrates sub-agents (Product Teams), organizations need:
-- **Supervisor visibility**: Complete end-to-end traces including all sub-agent executions in the supervisor's project
-- **Sub-agent team visibility**: Each product team sees only their sub-agent's trace data in their own project  
-- **Dual tracing**: The same trace spans appear in multiple LangSmith projects simultaneously
+**The Challenge**: When a supervisor agent (Platform Team, deployed on LangGraph Platform) orchestrates sub-agents (Product Teams, deployed elsewhere), organizations face a dual challenge:
+- **Cross-platform tracing**: Sub-agents deployed on external services don't automatically appear in LangSmith traces
+- **Multi-project visibility**: Teams need both supervisor visibility (complete traces) AND sub-agent team visibility (only their portions) in separate projects
 
-**Current Limitation**: Distributed tracing context propagation forces all trace data to go to one project (the parent's), preventing sub-agents from simultaneously tracing to their own projects.
+**Current Limitation**: Distributed tracing context propagation forces all trace data to go to one project (the parent's), preventing sub-agents from simultaneously tracing to their own projects while maintaining cross-platform trace continuity.
 
 **When to use**: 
-- Platform teams running supervisor agents that route to product team sub-agents
-- Organizations where different teams own different parts of an agent workflow
-- Scenarios requiring both end-to-end visibility and team-specific trace isolation
-- Production systems with distributed ownership of agent components
+- Platform teams running supervisor agents on LangGraph Platform that route to externally-deployed sub-agents
+- Organizations where different teams own and deploy different parts of an agent workflow
+- Production systems requiring both end-to-end visibility and team-specific trace isolation
+- Hybrid deployments with agents across different platforms and LangSmith projects
 
-**Key concepts**: Multi-project trace propagation, dual tracing contexts, project-specific trace visibility
-**Demo features**:
-- **Supervisor project**: Complete workflow traces including all sub-agent activities
-- **Sub-agent projects**: Product teams see only their agent's portion of distributed traces
-- **Context propagation**: Maintaining trace relationships while splitting across projects
+**Key concepts**: Cross-platform context propagation, multi-project trace splitting, dual tracing contexts
+**Demo features** (`multi_agent_tracing/cross_platform_dual_tracing/`):
+- **Supervisor Agent**: LangGraph Platform-deployed agent that routes requests to sub-agents
+- **Sub-Agents**: FastAPI-deployed agents owned by different product teams  
+- **Cross-platform propagation**: Proper trace linking when supervisor calls external sub-agents
+- **Dual project tracing**: Supervisor sees complete workflow, sub-agent teams see only their portions
 - **Team isolation**: Each team gets relevant trace data in their own LangSmith project
-
-#### 2b. **Cross-Platform Agent Orchestration Pattern** (`multi_agent_tracing/cross_platform/`)
-**The Challenge**: When Agent A (deployed on LangGraph Platform) calls Agent B (deployed elsewhere), Agent B's activities don't automatically appear in LangSmith traces.
-
-**When to use**:
-- LangGraph Platform agents that invoke external agent services
-- Hybrid deployments with agents across different platforms
-- Integration with existing agent services not on LangGraph Platform
-- Maintaining trace continuity across deployment boundaries
-
-**Key concepts**: Cross-platform context propagation, external agent tracing, trace nesting across deployments
-**Demo features**:
-- **Agent A**: LangGraph Platform-deployed supervisor agent
-- **Agent B**: Externally deployed sub-agent (FastAPI service)
-- **Context propagation**: Proper trace linking when Agent A calls Agent B
-- **Nested visibility**: Agent B's activities appear nested under the main workflow in LangSmith
 
 
 ## 🚀 Getting Started
